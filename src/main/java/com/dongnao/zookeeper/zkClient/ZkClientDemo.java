@@ -46,7 +46,7 @@ public class ZkClientDemo {
     }
     private static void create(ZkClient zk){
 //        zk.create("/node_11/node_11_1/node_11_1_1","abc", CreateMode.PERSISTENT); //创建节点
-        zk.createPersistent("/node_11/node_11_1/node_11_1_1",true); //该方法默认递归创建节点，即createParents为true
+        zk.createPersistent("/node_11/node_11_1/node_11_1_1",true); //该方法默认递归创建节点，但是无法设置值，即createParents为true
     }
 
     private static void update(ZkClient zk){

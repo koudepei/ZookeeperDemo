@@ -22,7 +22,7 @@ public class ZookeeperDemo {
         ZooKeeper zk=null;
         try {
             zk=new ZooKeeper("192.168.1.104:2181", SESSION_TIMEOUT, new Watcher() {
-                @Override
+                @Override    //jdk1.6才支持这里写@Override
                 public void process(WatchedEvent event) {
                     System.out.println("触发事件："+event.getType());
                 }

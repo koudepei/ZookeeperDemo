@@ -73,9 +73,6 @@ public class ZkClientDemo1 {
             }
         });
 
-        //        Student stu=Student.build().setPhone("123").setName("root");
-//        System.out.println(stu.getName());
-
         //让连接不要关闭
         try {
             System.in.read();
