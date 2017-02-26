@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * 实现分布式环境下同步锁的实现
+ * （使用zookeeper原生api）实现分布式环境下同步锁的实现
  * @author parker
  * @date 2016/12/15
  */
@@ -27,7 +27,7 @@ public class DistributeLockDemo implements Watcher{
     private CountDownLatch latch;
 
     //server链接字符串
-    private static final String CONNECTION_STRING="120.77.22.187:2181,120.77.22.187:2182,120.77.22.187:2183";
+    private static final String CONNECTION_STRING="192.168.1.104:2181,192.168.1.104:2182,192.168.1.104:2183";
 
     private static final int SESSION_TIMEOUT=5000; //超时时间
 
@@ -66,14 +66,14 @@ public class DistributeLockDemo implements Watcher{
             System.out.println("Thread "+Thread.currentThread().getName()+" - hold lock!");
             return;
         }
-        try {
+        try { //等待并获取锁
             waitLock(waitNode,SESSION_TIMEOUT);
         } catch (KeeperException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        //等待并获取锁
+
     }
 
     /**
@@ -129,9 +129,9 @@ public class DistributeLockDemo implements Watcher{
 
     public static void main(String[] args) {
         ExecutorService executorService= Executors.newCachedThreadPool();
-        Semaphore semaphore=new Semaphore(10);
+        final Semaphore semaphore=new Semaphore(10);
         for(int i=0;i<10;i++){
-//            Runnable runnable=()->{ //jdk1.8 lambda的一种用法，在java8里面有。
+//            Runnable runnable=()->{ //jdk1.8 lambda的一种用法，在java8里面有。且变量semaphore不需要加final
 //                try {
 //                    semaphore.acquire();
 //                    DistributeLockDemo distributeLockDemo=new DistributeLockDemo(CONNECTION_STRING);
@@ -144,7 +144,25 @@ public class DistributeLockDemo implements Watcher{
 //                    e.printStackTrace();
 //                }
 //            };
-//            executorService.execute(runnable);
+
+            Runnable runnable=new Runnable() {
+                @Override
+                public void run() {
+                try {
+                    semaphore.acquire();
+                    DistributeLockDemo distributeLockDemo=new DistributeLockDemo(CONNECTION_STRING);
+                    distributeLockDemo.lock();
+                    //业务代码
+                    Thread.sleep(3000);
+                    distributeLockDemo.unlock();
+                    semaphore.release();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                }
+            };
+
+            executorService.execute(runnable);
         }
         executorService.shutdown();
     }

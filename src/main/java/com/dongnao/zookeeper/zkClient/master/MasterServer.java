@@ -24,7 +24,7 @@ public class MasterServer {
     private final String MASTER_NODE="/master";
 
     //server链接字符串
-    private static final String CONNECTION_STRING="120.77.22.187:2181,120.77.22.187:2182,120.77.22.187:2183";
+    private static final String CONNECTION_STRING="192.168.1.104:2181,192.168.1.104:2182,192.168.1.104:2183";
 
     private static final int SESSION_TIMEOUT=5000; //超时时间
 
@@ -32,10 +32,11 @@ public class MasterServer {
 
     private ServerData masterData; //争抢到的master节点的服务器信息
 
-    private volatile boolean running=false; //服务是否启动状态
+    private volatile boolean running=false; //服务是否启动状态,  volatile保证多线程之间可见
 
     IZkDataListener dataListener; //master节点的监听事件
 
+    //JDK自带的定时器
     private ScheduledExecutorService scheService= Executors.newScheduledThreadPool(1);
 
 
@@ -48,7 +49,7 @@ public class MasterServer {
 
             @Override
             public void handleDataDeleted(String dataPath) throws Exception {
-                //监听节点删除事件
+                //监听节点删除事件，使用定时器每5秒钟去抢一次master
                 scheService.schedule(new Runnable() {
                     @Override
                     public void run() {
@@ -139,15 +140,21 @@ public class MasterServer {
     }
 
     public static void main(String[] args) {
+        //模拟多线程
         ExecutorService service=Executors.newCachedThreadPool();
-        Semaphore semaphore=new Semaphore(10);
-        for(int i=0;i<10;i++){
+        final Semaphore semaphore=new Semaphore(10);//jdk 并发多线程信号灯
+
+//        CountDownLatch ad = new CountDownLatch(10);
+//        ad.await();//等待到10个
+//        ad.countDown();//释放
+
+        for(int i=0;i<10;i++){//模拟10台服务器来抢master
             final int idx=i;
             Runnable runnable=new Runnable() {
                 @Override
                 public void run() {
-//                    try {
-//                        semaphore.acquire();
+                    try {
+                        semaphore.acquire();
                         //初始化一个zkclient的连接
                         ZkClient zk=new ZkClient(CONNECTION_STRING,
                                 SESSION_TIMEOUT,SESSION_TIMEOUT,
@@ -159,14 +166,14 @@ public class MasterServer {
                         //初始化一个争抢master节点的服务
                         MasterServer ms=new MasterServer(zk,serverData);
                         ms.start();
-//                        semaphore.release();
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
+                        semaphore.release();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             };
             service.execute(runnable);
         }
-        service.shutdown();
+        service.shutdown();//关闭线程
     }
 }
